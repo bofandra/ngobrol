@@ -20,5 +20,6 @@ Owner-confirmed versus proposed decisions are deliberately separate.
 | D14 | Open | Hosting, app stores, team capacity, branding/trademark, localization | not yet committed |
 | D15 | Implemented for P0, 2026-11-28 | Bundle the web renderer and game art and distribute the release files through draft PR CI | lets reviewers run the demo from a local server |
 | D16 | Implemented for P0, 2026-11-28 | Pending proposals and relationship votes have separate controls | keeps causal agreement and changes to the diagram distinct |
+| D17 | Owner confirmed, 2026-11-28 | Android application ID `com.bofandra.ngobrol` with a signed bundle for Internal testing | first Android release of the offline playtest |
 
 Do not treat proposed design numbers or illustrative artwork as final. Append new decisions with date, alternatives, rationale and owner approval where material.

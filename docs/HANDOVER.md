@@ -37,3 +37,7 @@ The optional Supabase code shares posts across the three seeded topics. It displ
 - Hosted preview, durable multiplayer, native host verification, and server-side AI are later roadmap milestones.
 
 Review the draft PR and the release screenshots before deciding where to host a preview. Update this handover after each milestone with the change, verification evidence, and the next open item.
+
+## Milestone Android Internal testing
+
+The derivative branch `codex/ngobrol-android` adds the Android host for `com.bofandra.ngobrol`. Its launcher label and icon follow the web playtest. The Android release targets API 36 and uses a dedicated `ngobrol-upload` signing configuration. The PKCS12 file and its Keychain password were provisioned locally. Release and emulator verification are the next checks for this milestone.
