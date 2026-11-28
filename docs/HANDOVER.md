@@ -40,8 +40,7 @@ Review the draft PR and the release screenshots before deciding where to host a 
 
 ## Milestone Android Internal testing
 
-The derivative branch `codex/ngobrol-android` adds the Android host for `com.bofandra.ngobrol`. Its launcher label and icon follow the web playtest. The Android release targets API 36 and uses a dedicated `ngobrol-upload` signing configuration. The PKCS12 file and its Keychain password were provisioned locally. This is version `0.1.0`, version code `1`, for the owner to upload to Play Console Internal testing.
-
+The Android host for `com.bofandra.ngobrol` is part of `feat/flutter-demo` and draft PR #1. Its launcher label and icon follow the web playtest. The Android release targets API 36 and uses a dedicated `ngobrol-upload` signing configuration. The PKCS12 file and its Keychain password were provisioned locally. This is version `0.1.0`, version code `1`, for the owner to upload to Play Console Internal testing.
 
 - Locked dependency resolution, `flutter analyze --no-pub`, all eight Flutter tests, and the no-CDN Web build passed. The Android release build used Flutter 3.35.2 and JDK 17. A release bundle build with its signing environment removed failed at `checkReleaseSigning`.
 - Bundletool 1.18.3 validated the signed AAB and its package, version, min SDK 24, target SDK 36, and 16 KB bundle alignment. Native ELF load segments for ARM64 and x86-64 and ZIP alignment for the universal APK passed. The APK and AAB both use the dedicated upload certificate.
@@ -49,3 +48,8 @@ The derivative branch `codex/ngobrol-android` adds the Android host for `com.bof
 - The AAB-generated APK passed the offline playtest on Android 15 (API 35, 4 KB pages). The walkthrough created a topic, posted with the Android keyboard open, voted and withdrew, submitted a pending proposal, and confirmed 25 XP in Profile. Discover, Talk, and Map rendered inside the system bars.
 - The same APK passed the offline walkthrough on Android 16 (API 36, 16 KB pages). The app created a topic, posted with the Android keyboard visible, voted and withdrew, kept the proposal pending, and showed 25 XP in Profile. The status and navigation bars stayed visible without covering the app controls.
 - The build is ready for the owner to upload as `app-release.aab` to Internal testing. Use the [Android build instructions](../README.md#build-android-for-internal-testing) to reproduce it with the local upload key.
+
+## Branch consolidation
+
+- Fast-forwarded `feat/flutter-demo` to include Android commits `76af2dc` and `b217b8e`. Use draft PR #1 to review the web and Android demo before merging to `main`.
+- Rechecked the combined branch on Flutter 3.35.2 and Dart 3.9.0. Locked dependency resolution, analysis, all eight tests, and the no-CDN web build passed. The web build still reports the Cupertino icon tree-shaking warning. Android bundle and emulator results are recorded above.
