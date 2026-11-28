@@ -1,11 +1,12 @@
-import 'dart:math' as math;
-import 'package:flutter/material.dart';
-import 'backend.dart';
+import 'dart:async';
 
-const bg = Color(0xff101e31);
-const panel = Color(0xff1b3046);
-const mint = Color(0xff50dfcb);
-const gold = Color(0xffffca55);
+import 'package:flutter/material.dart';
+
+import 'backend.dart';
+import 'game.dart';
+import 'living_map.dart';
+import 'playtest_forms.dart';
+import 'playtest_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,400 +20,692 @@ Future<void> main() async {
   runApp(NgobrolApp(backend: backend, connectionError: error));
 }
 
-class Topic {
-  Topic(this.id, this.title, this.category, this.icon, this.context,
-      {this.shared = false, List<Post>? posts, List<Link>? links})
-      : posts = posts ?? [], links = links ?? [];
-  final String id, title, category, icon, context;
-  final bool shared;
-  final List<Post> posts;
-  final List<Link> links;
-  final List<Post> remote = [];
-  final List<String> proposals = [];
-}
-
-class Post {
-  const Post(this.author, this.kind, this.body);
-  final String author, kind, body;
-}
-
-class Link {
-  Link(this.from, this.to, this.positive, {this.up = 0, this.down = 0});
-  final String from, to;
-  final bool positive;
-  int up, down, vote = 0;
-  void choose(int next) {
-    vote = vote == next ? 0 : next;
-  }
-}
-
-List<Topic> seedTopics() => [
-  Topic('shell', 'What makes a good home for a hermit crab?', 'Everyday life', '🐚',
-    'A little hermit crab needs a new shell. Explore the trade-offs.', shared: true,
-    posts: const [
-      Post('Rina', 'Answer', 'A larger shell might offer more protection, but it could also be heavier.'),
-      Post('Dimas', 'Question', 'Would a heavy shell make it harder to escape predators?'),
-      Post('Ngobrol AI · demo', 'Prompt', 'Could shell weight affect survival through mobility? Let’s review that hypothesis.'),
-    ],
-    links: [
-      Link('Shell size', 'Protection', true, up: 24, down: 3),
-      Link('Shell size', 'Shell weight', true, up: 18, down: 2),
-      Link('Shell weight', 'Mobility', false, up: 27, down: 6),
-      Link('Protection', 'Survival chance', true, up: 15, down: 1),
-      Link('Mobility', 'Survival chance', true, up: 20, down: 3),
-    ]),
-  Topic('transport', 'Which transportation is right for me?', 'Mobility', '🚆',
-    'Compare speed, cost, comfort, safety and the purpose of the journey.', shared: true,
-    posts: const [Post('Maya', 'Question', 'How does rush-hour traffic change the best choice?')],
-    links: [Link('Traffic', 'Travel time', true), Link('Travel time', 'Convenience', false)]),
-  Topic('heat', 'How can we reduce urban heat?', 'Environment', '🌳',
-    'Explore shade, vegetation, buildings and energy demand.', shared: true,
-    links: [Link('Tree cover', 'Shade', true), Link('Shade', 'Street temperature', false)]),
-];
-
 class NgobrolApp extends StatelessWidget {
   const NgobrolApp({super.key, this.backend, this.connectionError});
-  final DemoBackend? backend;
+
+  final DiscussionBackend? backend;
   final String? connectionError;
+
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'ngobrol.',
-    theme: ThemeData(
-      brightness: Brightness.dark, useMaterial3: true, scaffoldBackgroundColor: bg,
-      colorScheme: const ColorScheme.dark(primary: mint, secondary: gold, surface: panel),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true, fillColor: panel, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16))),
-    ),
-    home: GameHome(backend: backend, connectionError: connectionError),
+    theme: playtestTheme(),
+    home: _GameHome(backend: backend, connectionError: connectionError),
   );
 }
 
-class GameHome extends StatefulWidget {
-  const GameHome({super.key, this.backend, this.connectionError});
-  final DemoBackend? backend;
+class _GameHome extends StatefulWidget {
+  const _GameHome({this.backend, this.connectionError});
+
+  final DiscussionBackend? backend;
   final String? connectionError;
+
   @override
-  State<GameHome> createState() => _GameHomeState();
+  State<_GameHome> createState() => _GameHomeState();
 }
 
-class _GameHomeState extends State<GameHome> {
-  final topics = seedTopics();
-  final history = <String>[];
-  final composer = TextEditingController();
-  int xp = 0, tab = 0, roomTab = 0;
-  String kind = 'Question', query = '';
-  Topic? active;
-  bool busy = false;
-  String? notice;
+class _GameHomeState extends State<_GameHome> {
+  late final _session = GameSession(widget.backend);
+  final _search = TextEditingController();
+  int _tab = 0;
 
   @override
-  void initState() { super.initState(); notice = widget.connectionError; }
+  void dispose() {
+    _search.dispose();
+    _session.dispose();
+    super.dispose();
+  }
+
+  void _open(Topic topic) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    unawaited(_session.refresh(topic));
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _TopicRoom(topic: topic, session: _session),
+      ),
+    );
+  }
+
+  Future<void> _createTopic() async {
+    final created = await Navigator.push<(String, String)>(
+      context,
+      MaterialPageRoute(builder: (_) => const CreateTopicScreen()),
+    );
+    if (!mounted || created == null) return;
+    _open(_session.createTopic(created.$1, created.$2));
+  }
+
   @override
-  void dispose() { composer.dispose(); super.dispose(); }
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: _session,
+    builder: (context, _) => Scaffold(
+      appBar: AppBar(
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.forum_rounded, color: teal, size: 25),
+            SizedBox(width: 8),
+            Text('ngobrol.', style: TextStyle(fontSize: 27, letterSpacing: -1)),
+          ],
+        ),
+      ),
+      body: SafeArea(
+        bottom: false,
+        child: PlaytestFrame(
+          child: _tab == 0 ? _discover(context) : _profile(context),
+        ),
+      ),
+      bottomNavigationBar: Align(
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 740),
+          child: NavigationBar(
+            selectedIndex: _tab,
+            onDestinationSelected: (value) => setState(() => _tab = value),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.explore_outlined),
+                selectedIcon: Icon(Icons.explore, color: teal),
+                label: 'Discover',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline),
+                selectedIcon: Icon(Icons.person, color: teal),
+                label: 'Profile',
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 
-  void award(int points, String why) {
-    xp += points;
-    history.insert(0, '+$points XP · $why');
-  }
-
-  void open(Topic topic) {
-    setState(() { active = topic; roomTab = 0; composer.clear(); notice = widget.connectionError; });
-    refresh(topic);
-  }
-
-  Future<void> refresh(Topic topic) async {
-    final backend = widget.backend;
-    if (backend == null || !topic.shared) return;
-    try {
-      final rows = await backend.posts(topic.id);
-      if (!mounted) return;
-      setState(() {
-        topic.remote
-          ..clear()
-          ..addAll(rows.map((r) => Post('Community player', r['kind'] as String, r['body'] as String)));
-        if (active == topic) notice = null;
-      });
-    } catch (_) {
-      if (mounted && active == topic) setState(() => notice = 'Could not refresh shared posts.');
-    }
-  }
-
-  Future<void> send() async {
-    final topic = active;
-    final body = composer.text.trim();
-    final selected = kind;
-    if (topic == null || body.isEmpty || busy) return;
-    if (body.length > 2000) {
-      setState(() => notice = 'Please use 2,000 characters or fewer.');
-      return;
-    }
-    setState(() => busy = true);
-    bool synced = false;
-    final backend = widget.backend;
-    if (backend != null && topic.shared) {
-      try {
-        await backend.add(topic.id, selected, body);
-        synced = true;
-      } catch (_) {
-        if (mounted) setState(() => notice = 'Post kept locally; sharing failed.');
-      }
-    }
-    if (!mounted) return;
-    setState(() {
-      if (!synced) topic.posts.add(Post('You', selected, body));
-      award(5, selected);
-      topic.posts.add(const Post('Ngobrol AI · demo', 'Prompt',
-        'What factor could change this relationship? Is there evidence or an alternative explanation?'));
-      if (active == topic) composer.clear();
-      busy = false;
-    });
-    if (synced) await refresh(topic);
-  }
-
-  Future<void> createTopic() async {
-    final title = TextEditingController(), detail = TextEditingController();
-    final created = await showDialog<Topic>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Start a new discussion'),
-      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: title, maxLength: 120, decoration: const InputDecoration(labelText: 'Main question')),
-        const SizedBox(height: 12),
-        TextField(controller: detail, maxLength: 500, maxLines: 3, decoration: const InputDecoration(labelText: 'Context')),
-      ])),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-        FilledButton(onPressed: () {
-          if (title.text.trim().isEmpty) return;
-          Navigator.pop(ctx, Topic('local-${DateTime.now().microsecondsSinceEpoch}', title.text.trim(),
-            'Your world', '💬', detail.text.trim()));
-        }, child: const Text('Start Ngobrol')),
+  Widget _discover(BuildContext context) {
+    final query = _search.text.trim().toLowerCase();
+    final matches = _session.topics.where(
+      (topic) =>
+          '${topic.title} ${topic.category}'.toLowerCase().contains(query),
+    );
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            key: const PageStorageKey('discover'),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            children: [
+              _ProgressCard(session: _session),
+              if (widget.connectionError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    widget.connectionError!,
+                    style: const TextStyle(color: gold),
+                  ),
+                ),
+              const SizedBox(height: 22),
+              Text(
+                'Explore discussions',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _search,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: 'Search discussions',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _search.text.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () => setState(_search.clear),
+                          icon: const Icon(Icons.clear),
+                          tooltip: 'Clear search',
+                        ),
+                ),
+              ),
+              const SizedBox(height: 13),
+              if (matches.isEmpty)
+                Semantics(
+                  container: true,
+                  liveRegion: true,
+                  child: const GamePanel(
+                    child: Text('No discussions match this search.'),
+                  ),
+                ),
+              for (final topic in matches)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 9),
+                  child: _TopicCard(topic: topic, onTap: () => _open(topic)),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 5, 16, 7),
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _createTopic,
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('Create new topic'),
+            ),
+          ),
+        ),
       ],
-    ));
-    title.dispose(); detail.dispose();
-    if (created != null && mounted) {
-      setState(() { topics.insert(0, created); award(10, 'Started a topic'); });
-      open(created);
-    }
+    );
   }
 
-  Future<void> propose(Topic topic) async {
-    final from = TextEditingController(), to = TextEditingController(), why = TextEditingController();
-    bool positive = true;
-    final result = await showDialog<String>(context: context, builder: (ctx) => StatefulBuilder(
-      builder: (ctx, change) => AlertDialog(title: const Text('Propose a causal relationship'),
-        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: from, maxLength: 60, decoration: const InputDecoration(labelText: 'Cause / factor')),
-          TextField(controller: to, maxLength: 60, decoration: const InputDecoration(labelText: 'Effect / factor')),
-          SwitchListTile(title: Text(positive ? 'Positive (+)' : 'Negative (−)'), value: positive,
-            onChanged: (v) => change(() => positive = v)),
-          TextField(controller: why, maxLength: 500, maxLines: 2, decoration: const InputDecoration(labelText: 'Reason or evidence')),
-        ])),
+  Widget _profile(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      _ProgressCard(session: _session),
+      const SizedBox(height: 20),
+      Text(
+        'Contribution history',
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'XP is provisional for this playtest session.',
+        style: TextStyle(color: textMuted),
+      ),
+      const SizedBox(height: 12),
+      if (_session.history.isEmpty)
+        const GamePanel(child: Text('Your adventure starts with a question.')),
+      for (final entry in _session.history)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: GamePanel(child: Text(entry)),
+        ),
+    ],
+  );
+}
+
+class _ProgressCard extends StatelessWidget {
+  const _ProgressCard({required this.session});
+
+  final GameSession session;
+
+  @override
+  Widget build(BuildContext context) => GamePanel(
+    color: const Color(0xff123647),
+    border: const Color(0xff2e646e),
+    child: Row(
+      children: [
+        const CircleAvatar(
+          radius: 24,
+          backgroundColor: Color(0xff245761),
+          foregroundColor: teal,
+          child: Icon(Icons.explore, size: 27),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Systems Explorer',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              ),
+              Text(
+                'Level ${session.level}',
+                style: const TextStyle(color: textMuted),
+              ),
+              const SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: (session.xp % 100) / 100,
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(6),
+                backgroundColor: const Color(0xff305569),
+                semanticsLabel: 'Progress to next level',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        _XpTotal(session.xp),
+      ],
+    ),
+  );
+}
+
+class _XpTotal extends StatelessWidget {
+  const _XpTotal(this.xp);
+
+  final int xp;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Icon(Icons.emoji_events_rounded, size: 18, color: gold),
+      const SizedBox(width: 4),
+      Text(
+        '$xp XP',
+        style: const TextStyle(color: gold, fontWeight: FontWeight.w800),
+      ),
+    ],
+  );
+}
+
+class _TopicCard extends StatelessWidget {
+  const _TopicCard({required this.topic, required this.onTap});
+
+  final Topic topic;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: panel,
+    shape: RoundedRectangleBorder(
+      side: const BorderSide(color: stroke),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: Semantics(
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        child: Row(
+          children: [
+            SizedBox(width: 103, height: 96, child: TopicArt(topic.art)),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 12,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      topic.category,
+                      style: const TextStyle(
+                        color: sky,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      topic.title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        height: 1.18,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: Icon(Icons.chevron_right, color: teal),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _TopicRoom extends StatefulWidget {
+  const _TopicRoom({required this.topic, required this.session});
+
+  final Topic topic;
+  final GameSession session;
+
+  @override
+  State<_TopicRoom> createState() => _TopicRoomState();
+}
+
+class _TopicRoomState extends State<_TopicRoom> {
+  late final _composer = TextEditingController(text: widget.topic.draft);
+  final _feedScroll = ScrollController();
+  int _tab = 0;
+  String? _composerError;
+
+  Topic get _topic => widget.topic;
+  GameSession get _session => widget.session;
+  bool get _shared => _topic.shared && _session.backend != null;
+
+  @override
+  void dispose() {
+    _composer.dispose();
+    _feedScroll.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    if (_topic.sending) return;
+    final body = _composer.text.trim();
+    final error = body.isEmpty
+        ? 'Write a contribution first.'
+        : body.runes.length > contributionLimit
+        ? 'Use 2,000 characters or fewer.'
+        : null;
+    setState(() => _composerError = error);
+    if (error != null) return;
+
+    _composer.clear();
+    await _session.send(_topic, body);
+    if (!mounted || _tab != 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_feedScroll.hasClients) {
+        _feedScroll.animateTo(
+          _feedScroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 230),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: _session,
+    builder: (context, _) => Scaffold(
+      appBar: AppBar(
+        title: const Text('Discussion'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () {
-            if (from.text.trim().isEmpty || to.text.trim().isEmpty || why.text.trim().isEmpty ||
-                from.text.trim().toLowerCase() == to.text.trim().toLowerCase()) return;
-            Navigator.pop(ctx, '${from.text.trim()} → ${to.text.trim()} (${positive ? '+' : '−'})\n${why.text.trim()}');
-          }, child: const Text('Submit for review')),
+          if (_shared)
+            IconButton(
+              onPressed: () => _session.refresh(_topic),
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh shared posts',
+            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: _XpTotal(_session.xp),
+          ),
         ],
       ),
-    ));
-    from.dispose(); to.dispose(); why.dispose();
-    if (result != null && mounted) setState(() {
-      topic.proposals.add(result);
-      award(10, 'Proposed relationship');
-    });
-  }
+      body: SafeArea(
+        child: PlaytestFrame(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact =
+                  MediaQuery.viewInsetsOf(context).bottom > 0 ||
+                  constraints.maxHeight < 460;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (!compact && _tab == 0)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: SizedBox(
+                              height: 110,
+                              child: TopicArt(_topic.art),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _topic.title,
+                          maxLines: compact ? 1 : null,
+                          overflow: compact ? TextOverflow.ellipsis : null,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontSize: compact ? 16 : 21,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        if (!compact)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4, bottom: 4),
+                            child: Text(
+                              _shared
+                                  ? '${_topic.category} · Shared sandbox'
+                                  : '${_topic.category} · Session playtest',
+                              style: const TextStyle(color: textMuted),
+                            ),
+                          ),
+                        const SizedBox(height: 5),
+                        SegmentedButton<int>(
+                          segments: const [
+                            ButtonSegment(value: 0, label: Text('Talk')),
+                            ButtonSegment(value: 1, label: Text('Map')),
+                            ButtonSegment(value: 2, label: Text('Insights')),
+                          ],
+                          showSelectedIcon: false,
+                          selected: {_tab},
+                          onSelectionChanged: (tabs) {
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            setState(() => _tab = tabs.single);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_shared && _topic.refreshing)
+                    const LinearProgressIndicator(
+                      minHeight: 2,
+                      semanticsLabel: 'Refreshing shared posts',
+                    ),
+                  if (_topic.refreshError case final error?)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Text(error, style: const TextStyle(color: gold)),
+                      ),
+                    ),
+                  Expanded(
+                    child: switch (_tab) {
+                      0 => _talk(),
+                      1 => LivingMap(topic: _topic, session: _session),
+                      _ => _insights(),
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    ),
+  );
 
-  Widget surface(Widget child) => Card(color: panel, margin: const EdgeInsets.only(bottom: 12),
-    child: Padding(padding: const EdgeInsets.all(16), child: child));
+  Widget _talk() => Column(
+    children: [
+      Expanded(
+        child: ListView(
+          key: const PageStorageKey('talk'),
+          controller: _feedScroll,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+          children: [
+            if (_topic.context.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  _topic.context,
+                  style: const TextStyle(color: textMuted, height: 1.4),
+                ),
+              ),
+            for (final post in _topic.feed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _PostCard(post),
+              ),
+          ],
+        ),
+      ),
+      DecoratedBox(
+        decoration: const BoxDecoration(
+          color: night,
+          border: Border(top: BorderSide(color: stroke)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Wrap(
+                spacing: 7,
+                children: [
+                  for (final (index, option) in contributionKinds.indexed)
+                    ChoiceChip(
+                      label: Text(option),
+                      showCheckmark: false,
+                      labelStyle: TextStyle(
+                        color: [lilac, sky, gold][index],
+                        fontWeight: _topic.kind == option
+                            ? FontWeight.w800
+                            : null,
+                      ),
+                      selectedColor: const Color(0xff26465f),
+                      selected: _topic.kind == option,
+                      onSelected: _topic.sending
+                          ? null
+                          : (_) => setState(() => _topic.kind = option),
+                    ),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _composer,
+                      enabled: !_topic.sending,
+                      minLines: 1,
+                      maxLines: 2,
+                      textCapitalization: TextCapitalization.sentences,
+                      onChanged: (value) {
+                        _topic.draft = value;
+                        if (_composerError != null) {
+                          setState(() => _composerError = null);
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Share your thoughts…',
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
+                    onPressed: _topic.sending ? null : _send,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 48,
+                      height: 48,
+                    ),
+                    icon: _topic.sending
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              semanticsLabel: 'Sharing contribution',
+                            ),
+                          )
+                        : const Icon(Icons.send_rounded),
+                    tooltip: 'Send contribution',
+                  ),
+                ],
+              ),
+              if (_composerError case final error?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(error, style: const TextStyle(color: coral)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
 
-  Widget discover() => ListView(padding: const EdgeInsets.all(16), children: [
-    surface(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('A world of questions', style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 8),
-      const Text('Play together. Connect ideas. Understand the world.'),
-      const SizedBox(height: 14),
-      FilledButton.icon(onPressed: createTopic, icon: const Icon(Icons.add), label: const Text('Create new topic')),
-    ])),
-    TextField(onChanged: (value) => setState(() => query = value), decoration:
-      const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Explore discussions')),
-    const SizedBox(height: 16),
-    for (final topic in topics.where((t) => '${t.title} ${t.category}'.toLowerCase().contains(query.toLowerCase())))
-      surface(ListTile(contentPadding: EdgeInsets.zero, onTap: () => open(topic),
-        leading: Text(topic.icon, style: const TextStyle(fontSize: 34)),
-        title: Text(topic.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('${topic.category} · Open discussion'),
-        trailing: const Icon(Icons.chevron_right, color: mint))),
-  ]);
-
-  Widget profile() => ListView(padding: const EdgeInsets.all(16), children: [
-    surface(Column(children: [
-      const CircleAvatar(radius: 35, child: Icon(Icons.explore, size: 35)),
-      const SizedBox(height: 12), const Text('Systems Explorer', style: TextStyle(fontSize: 23)),
-      Text('Level ${1 + xp ~/ 100} · $xp XP', style: const TextStyle(color: gold, fontSize: 18)),
-      const SizedBox(height: 12), LinearProgressIndicator(value: (xp % 100) / 100),
-      const SizedBox(height: 8), const Text('Prototype XP is local and provisional.'),
-    ])),
-    const Text('Contribution history', style: TextStyle(fontSize: 20)),
-    const SizedBox(height: 12),
-    if (history.isEmpty) const Text('Your adventure starts with a question.'),
-    for (final h in history) surface(Text(h)),
-  ]);
-
-  Widget talk(Topic t) => Column(children: [
-    Expanded(child: ListView(padding: const EdgeInsets.all(16), children: [
-      surface(Text(t.context.isEmpty ? 'Explore different perspectives together.' : t.context)),
-      for (final p in [...t.posts, ...t.remote])
-        surface(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(p.author, style: const TextStyle(color: mint, fontWeight: FontWeight.bold)),
-          Text(p.kind, style: const TextStyle(color: gold, fontSize: 12)),
-          const SizedBox(height: 8), Text(p.body),
-        ])),
-    ])),
-    SafeArea(top: false, child: Padding(padding: const EdgeInsets.all(12), child: Column(children: [
-      Wrap(spacing: 8, children: [
-        for (final option in ['Question', 'Answer', 'Suggestion'])
-          ChoiceChip(label: Text(option), selected: kind == option, onSelected: (_) => setState(() => kind = option)),
-      ]),
-      Row(children: [
-        Expanded(child: TextField(controller: composer, enabled: !busy, minLines: 1, maxLines: 3,
-          decoration: const InputDecoration(hintText: 'Share your thoughts…'))),
-        IconButton.filled(onPressed: busy ? null : send, icon: const Icon(Icons.send), tooltip: 'Send contribution'),
-      ]),
-    ]))),
-  ]);
-
-  Widget map(Topic t) => ListView(padding: const EdgeInsets.all(16), children: [
-    surface(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Living system map', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-      const Text('AI demo · causal hypotheses, not established facts'),
-      const SizedBox(height: 12),
-      if (t.links.isEmpty) const Text('No relationships yet. Add a proposal to begin.')
-      else SizedBox(height: 280, child: CustomPaint(painter: MapPainter(t.links), child: const SizedBox.expand())),
-      const Text('+ same direction   ·   − opposite direction', style: TextStyle(color: mint)),
-      const Text('Votes show agreement, not causal proof.'),
-    ])),
-    const Text('Review relationships', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
-    for (final link in t.links) surface(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('${link.from} → ${link.to} (${link.positive ? '+' : '−'})'),
-      Row(children: [
-        TextButton.icon(onPressed: () => setState(() => link.choose(1)),
-          icon: Icon(link.vote == 1 ? Icons.thumb_up : Icons.thumb_up_outlined), label: Text('${link.up + (link.vote == 1 ? 1 : 0)}')),
-        TextButton.icon(onPressed: () => setState(() => link.choose(-1)),
-          icon: Icon(link.vote == -1 ? Icons.thumb_down : Icons.thumb_down_outlined), label: Text('${link.down + (link.vote == -1 ? 1 : 0)}')),
-      ]),
-    ])),
-    FilledButton.icon(onPressed: () => propose(t), icon: const Icon(Icons.edit), label: const Text('Suggest map change')),
-    const SizedBox(height: 12),
-    Text('Pending proposals (${t.proposals.length})', style: const TextStyle(fontSize: 18)),
-    for (final p in t.proposals) surface(Text(p)),
-  ]);
-
-  Widget room(Topic t) => Column(children: [
-    Padding(padding: const EdgeInsets.all(12), child: Column(children: [
-      Text('${t.icon} ${t.title}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+  Widget _insights() => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      GamePanel(
+        child: Text(
+          '${_topic.links.length} causal hypotheses · '
+          '${_topic.proposals.length} proposed changes',
+        ),
+      ),
       const SizedBox(height: 10),
-      SegmentedButton<int>(segments: const [
-        ButtonSegment(value: 0, label: Text('Talk'), icon: Icon(Icons.chat)),
-        ButtonSegment(value: 1, label: Text('Map'), icon: Icon(Icons.hub)),
-        ButtonSegment(value: 2, label: Text('Insights'), icon: Icon(Icons.lightbulb_outline)),
-      ], selected: {roomTab}, onSelectionChanged: (s) => setState(() => roomTab = s.first)),
-    ])),
-    Expanded(child: roomTab == 0 ? talk(t) : roomTab == 1 ? map(t) :
-      ListView(padding: const EdgeInsets.all(16), children: [
-        surface(const Text('This discussion never ends. Return when new perspectives or evidence emerge.')),
-        surface(Text('${t.links.length} causal hypotheses · ${t.proposals.length} proposed changes')),
-        surface(const Text('Next question: Under what conditions might a proposed relationship stop being true?')),
-      ])),
-  ]);
+      const GamePanel(
+        child: Text(
+          'Under what conditions might a proposed relationship stop being true? '
+          'Revisit this discussion when you have a new perspective.',
+        ),
+      ),
+    ],
+  );
+}
+
+class _PostCard extends StatelessWidget {
+  const _PostCard(this.post);
+
+  final Contribution post;
 
   @override
   Widget build(BuildContext context) {
-    final topic = active;
-    return Scaffold(
-      appBar: AppBar(backgroundColor: bg,
-        leading: topic == null ? null : IconButton(onPressed: () => setState(() { active = null; notice = widget.connectionError; }), icon: const Icon(Icons.arrow_back)),
-        title: const Text('ngobrol.', style: TextStyle(color: mint, fontWeight: FontWeight.w900, fontSize: 27)),
-        actions: [
-          if (topic != null && topic.shared && widget.backend != null)
-            IconButton(onPressed: () => refresh(topic), icon: const Icon(Icons.refresh), tooltip: 'Refresh shared posts'),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Center(child: Text('🏆 $xp XP', style: const TextStyle(color: gold)))),
-        ]),
-      body: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: Column(children: [
-        Text(widget.backend == null ? 'OFFLINE PLAYTEST' : 'SUPABASE SANDBOX · public demo posts',
-          style: const TextStyle(color: mint, fontSize: 11, letterSpacing: 1.2)),
-        if (notice != null) Padding(padding: const EdgeInsets.all(8), child: Text(notice!, style: const TextStyle(color: gold))),
-        Expanded(child: topic != null ? room(topic) : tab == 0 ? discover() : profile()),
-      ]))),
-      bottomNavigationBar: topic == null ? NavigationBar(selectedIndex: tab, onDestinationSelected: (v) => setState(() => tab = v),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.explore_outlined), label: 'Discover'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
-        ]) : null,
+    final ai = post.isFacilitator;
+    return GamePanel(
+      color: ai ? const Color(0xff113f4b) : panel,
+      border: ai ? const Color(0xff36777b) : stroke,
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 17,
+            backgroundColor: ai ? const Color(0xff256667) : stroke,
+            child: Icon(
+              ai ? Icons.auto_awesome_rounded : Icons.person,
+              size: 18,
+              color: ai ? teal : sky,
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 3,
+                  children: [
+                    Text(
+                      post.author,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    Text(
+                      ai ? 'Simulated facilitator' : post.kind,
+                      style: TextStyle(color: ai ? teal : lilac),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(post.body, style: const TextStyle(height: 1.35)),
+                if (post.keptLocally)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 5),
+                    child: Text(
+                      'Kept on this device · Sharing failed',
+                      style: TextStyle(color: gold),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
-}
-
-class MapPainter extends CustomPainter {
-  MapPainter(this.links);
-  final List<Link> links;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final names = <String>{for (final l in links) l.from, for (final l in links) l.to}.toList();
-    if (names.isEmpty) return;
-    final points = <String, Offset>{};
-    final shell = names.contains('Shell size') && names.length == 5;
-    if (shell) {
-      points.addAll({
-        'Shell size': Offset(size.width * .5, 26),
-        'Protection': Offset(size.width * .23, 104),
-        'Shell weight': Offset(size.width * .77, 104),
-        'Mobility': Offset(size.width * .77, 177),
-        'Survival chance': Offset(size.width * .5, 253),
-      });
-    } else {
-      for (var i = 0; i < names.length; i++) {
-        final angle = -math.pi / 2 + 2 * math.pi * i / names.length;
-        points[names[i]] = Offset(size.width / 2 + math.cos(angle) * size.width * .28,
-          size.height / 2 + math.sin(angle) * size.height * .35);
-      }
-    }
-    final nodeWidth = math.min(116.0, size.width * .32);
-    const nodeHeight = 38.0;
-    for (final l in links) {
-      final a = points[l.from]!, b = points[l.to]!;
-      final delta = b - a;
-      if (delta.distance == 0) continue;
-      final unit = delta / delta.distance;
-      final trim = math.min(nodeWidth / 2 / math.max(unit.dx.abs(), .001),
-        nodeHeight / 2 / math.max(unit.dy.abs(), .001));
-      final start = a + unit * trim, end = b - unit * trim;
-      final color = l.positive ? mint : const Color(0xffff8787);
-      final paint = Paint()..color = color..strokeWidth = 2..style = PaintingStyle.stroke;
-      canvas.drawLine(start, end, paint);
-      final perp = Offset(-unit.dy, unit.dx);
-      final tip = Path()..moveTo(end.dx, end.dy)
-        ..lineTo((end - unit * 9 + perp * 5).dx, (end - unit * 9 + perp * 5).dy)
-        ..lineTo((end - unit * 9 - perp * 5).dx, (end - unit * 9 - perp * 5).dy)..close();
-      canvas.drawPath(tip, Paint()..color = color);
-      label(canvas, l.positive ? '+' : '−', (start + end) / 2 + perp * 10, color, 16);
-    }
-    for (final entry in points.entries) {
-      final rect = RRect.fromRectAndRadius(Rect.fromCenter(center: entry.value, width: nodeWidth, height: nodeHeight), const Radius.circular(10));
-      canvas.drawRRect(rect, Paint()..color = panel);
-      canvas.drawRRect(rect, Paint()..color = mint..style = PaintingStyle.stroke..strokeWidth = 1.5);
-      label(canvas, entry.key, entry.value, Colors.white, 12, maxWidth: nodeWidth - 8);
-    }
-  }
-
-  void label(Canvas canvas, String text, Offset center, Color color, double fontSize, {double maxWidth = 100}) {
-    final p = TextPainter(text: TextSpan(text: text, style: TextStyle(color: color, fontSize: fontSize, fontWeight: FontWeight.w600)),
-      textDirection: TextDirection.ltr, textAlign: TextAlign.center, maxLines: 2, ellipsis: '…')..layout(maxWidth: maxWidth);
-    p.paint(canvas, center - Offset(p.width / 2, p.height / 2));
-  }
-
-  @override
-  bool shouldRepaint(covariant MapPainter oldDelegate) => true;
 }

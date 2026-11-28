@@ -44,3 +44,9 @@ Next smallest actionable task:
 - Flutter 3.35.2 with Dart 3.9.0 resolved the pinned Supabase Flutter dependency. The original branch failed analysis, test compilation, and the release build at the same missing closing parenthesis in the proposal dialog. Applying the syntax correction let the no-CDN web build succeed and boot in Chrome.
 - Captured Discover, Create Topic, Talk, and Map at 360 × 800 and 1280 × 900 before restyling. The baseline used emoji topic rows, a modal create form, generic post cards, and an ungridded graph with a scrolling relationship list.
 - An isolated PostgreSQL 14 run with stub Auth claims verified author-owned inserts, reads by a second authenticated identity, and denial of unauthenticated reads and forged author IDs. Supabase Auth and API testing still require a dedicated sandbox.
+
+## 2026-11-28 gameplay and UI
+
+- Built the four core screens around the game references. Added bundled topic illustrations, a full-screen topic form, a compact composer, and a diagram and list with individual relationship voting.
+- Moved session state into `GameSession`. Proposals stay pending, and successful actions award session XP once. Shared-post responses belong to their originating topic. Acknowledged rows reconcile by ID and a failed share shows a local copy.
+- The eight regression tests pass, including narrow keyboard insets, validation, searching and revisiting, voting and withdrawal, proposals, local fallback, and late shared responses. Release browser checks are the next gate.
