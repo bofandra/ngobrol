@@ -40,4 +40,12 @@ Review the draft PR and the release screenshots before deciding where to host a 
 
 ## Milestone Android Internal testing
 
-The derivative branch `codex/ngobrol-android` adds the Android host for `com.bofandra.ngobrol`. Its launcher label and icon follow the web playtest. The Android release targets API 36 and uses a dedicated `ngobrol-upload` signing configuration. The PKCS12 file and its Keychain password were provisioned locally. Release and emulator verification are the next checks for this milestone.
+The derivative branch `codex/ngobrol-android` adds the Android host for `com.bofandra.ngobrol`. Its launcher label and icon follow the web playtest. The Android release targets API 36 and uses a dedicated `ngobrol-upload` signing configuration. The PKCS12 file and its Keychain password were provisioned locally. This is version `0.1.0`, version code `1`, for the owner to upload to Play Console Internal testing.
+
+
+- Locked dependency resolution, `flutter analyze --no-pub`, all eight Flutter tests, and the no-CDN Web build passed. The Android release build used Flutter 3.35.2 and JDK 17. A release bundle build with its signing environment removed failed at `checkReleaseSigning`.
+- Bundletool 1.18.3 validated the signed AAB and its package, version, min SDK 24, target SDK 36, and 16 KB bundle alignment. Native ELF load segments for ARM64 and x86-64 and ZIP alignment for the universal APK passed. The APK and AAB both use the dedicated upload certificate.
+- Release SHA-256 is `b14c5df8cc6d7128fb539e3b84e15ee827ab5ac1966e7b2f81b700389fa7434b`. Upload certificate SHA-256 is `C0:B1:B5:2F:95:D0:35:1F:98:A0:5C:5B:95:87:2E:C9:4D:1F:20:82:B2:8C:42:40:B9:E7:88:4C:1A:56:A7:12`.
+- The AAB-generated APK passed the offline playtest on Android 15 (API 35, 4 KB pages). The walkthrough created a topic, posted with the Android keyboard open, voted and withdrew, submitted a pending proposal, and confirmed 25 XP in Profile. Discover, Talk, and Map rendered inside the system bars.
+- The same APK passed the offline walkthrough on Android 16 (API 36, 16 KB pages). The app created a topic, posted with the Android keyboard visible, voted and withdrew, kept the proposal pending, and showed 25 XP in Profile. The status and navigation bars stayed visible without covering the app controls.
+- The build is ready for the owner to upload as `app-release.aab` to Internal testing. Use the [Android build instructions](../README.md#build-android-for-internal-testing) to reproduce it with the local upload key.
