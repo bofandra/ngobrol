@@ -1,6 +1,6 @@
 # Flutter Web playtest
 
-Use the credential-free release from [draft PR #1](https://github.com/bofandra/ngobrol/pull/1) to try the core game. Download the `ngobrol-flutter-web` artifact from a successful **Flutter Web playtest** run, or build it with the [README commands](../README.md). Serve the extracted files over local HTTP.
+Build the credential-free release from [draft PR #1](https://github.com/bofandra/ngobrol/pull/1) using the [README commands](../README.md), then serve its files over local HTTP. The **Flutter Web playtest** workflow is configured to create a `ngobrol-flutter-web` artifact after a successful run. The account billing lock prevented the initial workflow from starting. [GitHub Actions run](https://github.com/bofandra/ngobrol/actions/runs/46093342723)
 
 ## Hermit crab walkthrough
 

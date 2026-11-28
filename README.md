@@ -18,7 +18,7 @@ flutter build web --no-web-resources-cdn
 python3 -m http.server 8080 --bind 127.0.0.1 --directory build/web
 ```
 
-Open [the local preview](http://127.0.0.1:8080). The **ngobrol-flutter-web** artifact from the draft PR workflow contains the same web files. Extract it and point the server at the extracted directory. See the [web playtest guide](docs/WEB_PLAYTEST.md) for the walkthrough, screenshots, and verification.
+Open [the local preview](http://127.0.0.1:8080). After a successful draft PR workflow run, its **ngobrol-flutter-web** artifact will contain the same web files. Extract it and point the server at the extracted directory. See the [web playtest guide](docs/WEB_PLAYTEST.md) for the walkthrough, screenshots, and verification.
 
 ## Optional Supabase sandbox
 
