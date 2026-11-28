@@ -2,7 +2,7 @@
 A cozy futuristic strategy game, not enterprise software. The primary mockup is [01_Core_Gameplay.png](mockups/01_Core_Gameplay.png). All PNGs are generated concept art, not pixel-perfect specs. Written requirements supersede inconsistent labels, XP values, names or arrows.
 
 ## Navigation
-Target: Discover | My Topics | Contributions | Profile, Create always accessible, search/notifications from Discover. Inside a topic: Talk | Map | Evidence | Insights. Deep links to topic, post, map element and revision with authorization. P0 currently has Discover/Profile and Talk/Map/Insights. Keep a desktop/tablet map workspace with larger canvas later.
+Target: Discover | My Topics | Contributions | Profile, Create always accessible, search/notifications from Discover. Inside a topic: Talk | Map | Evidence | Insights. Deep links to topic, post, map element and revision with authorization. P0 has Discover and Profile at the top level, a full-screen Create Topic form, and Talk, Map, and Insights inside each room. Keep a desktop/tablet map workspace with larger canvas later.
 
 | Screen | Required states/interactions | Reference |
 |---|---|---|
@@ -38,4 +38,4 @@ Rounded cards, modern rounded typography, minimal text, 44px minimum touch targe
 Discover shell topic → open Talk → contribute “What about changing tides?” → AI-labeled suggestion → Map → select Shell weight → Mobility → view negative polarity and rationale → vote/withdraw → propose a new relationship with rationale → see Pending → return to profile XP/history → revisit topic. Demonstrate review and version publishing when P1 exists.
 
 ## Visual acceptance
-Capture real rendered screenshots at narrow mobile and desktop sizes, compare to mockups, check text clipping, long labels, keyboard, contrast, map legibility and all touch actions. Do not claim the current prototype matches the mockups without actual screenshots.
+See the [web playtest visual comparison](WEB_PLAYTEST.md) for the rendered mobile and desktop screens, observed differences from the concepts, and the browser walkthrough.

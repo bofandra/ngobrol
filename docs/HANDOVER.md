@@ -1,52 +1,38 @@
-# Codex handover — Ngobrol v0.1
+# Ngobrol project handover
+
+Updated 2026-11-28. Work continues on `feat/flutter-demo` in [draft PR #1](https://github.com/bofandra/ngobrol/pull/1).
 
 ## Start here
-Repository: https://github.com/bofandra/ngobrol
-Branch: feat/flutter-demo
-Draft PR: https://github.com/bofandra/ngobrol/pull/1
-Baseline app commit: e9b3e51546d7c41a315e9ea44f2c2d223ae57f56
-Date: 2026-11-27
-Read ../AGENTS.md, PRODUCT_VISION.md, GAME_DESIGN.md, PRD.md, UI_UX_DESIGN.md, ARCHITECTURE.md, DECISIONS.md, ROADMAP.md, demo-scope.md. Actual visual assets in mockups/. The historical original DOCX is linked in mockups/README.md; these markdown files reconcile its older stack with owner's Flutter/Supabase choice.
 
-## What exists (source committed, not runtime verified)
-- Flutter Material 3 dark theme; Discover search, create local topic, Talk, Map, Insights, Profile/XP.
-- Seed shell/transport/heat topics; signed graph via CustomPainter, per-link toggle votes, relationship proposal queue, local XP/history.
-- Deterministic AI helper prompt; not real extraction or CLD generation. Map not yet draggable or selectable by node; use list.
-- Optional Supabase anonymous Auth, sandbox shared posts for three seed topics, manual refresh; custom topics/votes/proposals/XP local only.
-- RLS sandbox SQL, README commands, web entry point, tests authored. No live Supabase project, model, compiled app, actual UI screenshot or verified CI.
-- Main initialized with README only; feature branch contains prototype and this handover. PR remains draft, do not merge.
+Read [AGENTS.md](../AGENTS.md) and the [web playtest guide](WEB_PLAYTEST.md). The guide includes the four core screens, the product mockups, and a release walkthrough. Use the [README](../README.md) to build or serve the artifact locally.
 
-## First Codex task (P0)
-1. Inspect branch and files; read docs and mockups/01_Core_Gameplay.png then screen crops 02–05.
-2. Install/configure stable Flutter SDK if environment allows. Check supabase_flutter dependency version/API against current docs (pin is unverified). Run flutter pub get; commit lockfile when successful. Generate missing host scaffolding safely without overwriting authored files. Verify web bootstrap.
-3. Run flutter analyze, flutter test, flutter build web. Fix failures and extend tests (topic creation, voting withdrawal, invalid inputs, proposal queue and offline flow). Record exact command outputs; if tooling/network unavailable document blocker, do not invent pass.
-4. Start actual web app; manually exercise shell walkthrough. Capture rendered screenshots narrow mobile and desktop, compare to reference art, fix layout and readability. Check navigation when keyboard open, dialog controller lifecycle, scrolling/voting and async stale refresh. Current tests may require scrolling/focus fixes; investigate.
-5. Prepare repeatable CI and preview instructions. No production deployment or Supabase project changes without approval. Keep offline mode working.
-6. Update this handover and decisions; commit to existing branch or derivative, update PR. Do not merge without approval.
+Product context lives in the [vision](PRODUCT_VISION.md), [game design](GAME_DESIGN.md), [PRD](PRD.md), and [UI design](UI_UX_DESIGN.md). Engineering context lives in the [architecture](ARCHITECTURE.md), [decisions](DECISIONS.md), [demo scope](demo-scope.md), and [roadmap](ROADMAP.md).
 
-## Milestone completion criteria
-P0 passes build/analyze/tests and manual walkthrough, screenshot comparison documented, limitations explicit. Then propose shareable web preview; durable data/AI collaboration is next, not part of this verification.
+## Current playtest
 
-## Open blockers
-Flutter tooling not available during prior source authoring; dependency and tests unverified. No approved Supabase project credentials or AI provider. Public Drive permissions not confirmed, but repo now contains the original visual PNGs, and all essential context is local markdown. Original DOCX is historical reference only.
+The credential-free release supports illustrated Discover, local topic creation, Talk, a signed causal diagram, per-relationship votes, pending proposals, Insights, and Profile. The session retains created topics, contributions, votes, proposals, and provisional XP until the app restarts. The facilitator provides a deterministic prompt. The shell diagram illustrates hypotheses with no feedback loop.
 
-## Handover update template
-Date / branch / commit:
-Completed and evidence:
-Commands and actual results:
-Known issues and limitations:
-Decisions changed:
-Next smallest actionable task:
+The optional Supabase code shares posts across the three seeded topics. It displays acknowledged rows immediately, reconciles refreshes by post ID, and keeps failed submissions locally. Local PostgreSQL verified the sandbox SQL with two identities. A dedicated Supabase project is still needed to verify live Auth and API behavior.
 
-## 2026-11-28 baseline verification
+## Milestones
 
-- Reviewed draft PR #1, the original Drive product document, and the checked-in mockups. The written design uses Flutter and Supabase and depicts the shell example as a causal hypothesis map.
-- Flutter 3.35.2 with Dart 3.9.0 resolved the pinned Supabase Flutter dependency. The original branch failed analysis, test compilation, and the release build at the same missing closing parenthesis in the proposal dialog. Applying the syntax correction let the no-CDN web build succeed and boot in Chrome.
-- Captured Discover, Create Topic, Talk, and Map at 360 × 800 and 1280 × 900 before restyling. The baseline used emoji topic rows, a modal create form, generic post cards, and an ungridded graph with a scrolling relationship list.
-- An isolated PostgreSQL 14 run with stub Auth claims verified author-owned inserts, reads by a second authenticated identity, and denial of unauthenticated reads and forged author IDs. Supabase Auth and API testing still require a dedicated sandbox.
+### Baseline verification
 
-## 2026-11-28 gameplay and UI
+- Reviewed the draft PR, original Drive design document, and repository mockups. Flutter 3.35.2 with Dart 3.9.0 resolved the pinned Supabase Flutter dependency.
+- The original source failed analysis, test compilation, and the web build at a missing parenthesis in the proposal dialog. The syntax fix and dependency lock are in commit `0fa282a`. After that fix, Chrome rendered the baseline at 360 × 800 and 1280 × 900 before restyling.
+- The baseline relied on network fonts. Repeating the initial browser check with external requests blocked rendered many labels blank.
 
-- Built the four core screens around the game references. Added bundled topic illustrations, a full-screen topic form, a compact composer, and a diagram and list with individual relationship voting.
-- Moved session state into `GameSession`. Proposals stay pending, and successful actions award session XP once. Shared-post responses belong to their originating topic. Acknowledged rows reconcile by ID and a failed share shows a local copy.
-- The eight regression tests pass, including narrow keyboard insets, validation, searching and revisiting, voting and withdrawal, proposals, local fallback, and late shared responses. Release browser checks are the next gate.
+### Gameplay and UI
+
+- Added original topic illustrations, a full-screen form, a compact composer, signed edges, and a keyboard-accessible relationship list. The session model keeps proposals pending and associates shared requests with their originating topic.
+- Added eight regression tests covering search, validation, voting and withdrawal, topic revisit, proposal handling, session XP, simulated keyboard insets, and shared-response ordering and fallback.
+- Bundled the app fonts, causal arrow glyphs, and Flutter's startup font to support the release without external requests.
+
+### Release verification
+
+- `flutter pub get --enforce-lockfile`, `flutter analyze --no-pub`, `flutter test --no-pub`, and `flutter build web --no-web-resources-cdn --no-pub` succeeded on Flutter 3.35.2 and Dart 3.9.0. All eight tests passed. The build reports Flutter's existing Cupertino icon tree-shaking warning.
+- Chrome completed the full offline walkthrough at 360 × 800 and 1280 × 900 with external requests blocked. Search, creation, narrow composition, topic revisit, keyboard vote activation and withdrawal, pending proposals, and XP passed. The final screens and comparison are in the [playtest guide](WEB_PLAYTEST.md).
+- Isolated PostgreSQL 14 verified an authenticated insert with a returned ID, a read and write by a second identity, and rejection of unauthenticated reads and mismatched author IDs. The Auth claim was stubbed. The separate fake-backend tests verify one local award on repeated submission and deduplication of acknowledged rows by ID.
+- The draft PR workflow builds a downloadable static release. Hosted preview, durable multiplayer, native host verification, and server-side AI are later roadmap milestones.
+
+Review the draft PR and the release screenshots before deciding where to host a preview. Update this handover after each milestone with the change, verification evidence, and the next open item.

@@ -19,7 +19,7 @@ Ngobrol is a cooperative multiplayer Systems Thinking game. Read [docs/HANDOVER.
 - Prefer small vertical slices and clear repository/data boundaries. No unnecessary platform/framework churn.
 - Preserve the mobile-first visual direction: midnight navy, teal, gold, rounded cards, playful exploration; use [docs/mockups/](docs/mockups/) as design references, not exact copy or data.
 - No direct merge into main without owner approval. Continue feat/flutter-demo / draft PR #1 or a derivative branch. Never force-push over another contributor.
-- Before claiming success run flutter pub get, flutter analyze, flutter test, flutter build web; record actual results and limitations. For backend changes, run RLS tests with distinct users and verify idempotency.
+- Verify with Flutter 3.35.2 and Dart 3.9.0. Run `flutter pub get --enforce-lockfile`, `flutter analyze --no-pub`, `flutter test --no-pub`, and `flutter build web --no-web-resources-cdn --no-pub`. Record actual results and limitations. For backend changes, run RLS tests with distinct users and verify idempotency.
 - Do not deploy or create paid resources without explicit owner approval. Never claim a live AI or Supabase project exists unless verified.
 - Update docs/HANDOVER.md after each milestone (what changed, test results, outstanding risks, next action). Record material product and architecture decisions in docs/DECISIONS.md. Keep PRs scoped.
 
@@ -32,4 +32,5 @@ Ngobrol is a cooperative multiplayer Systems Thinking game. Read [docs/HANDOVER.
 - [DECISIONS](docs/DECISIONS.md): owner decisions versus proposals.
 - [ROADMAP](docs/ROADMAP.md): staged delivery.
 - [HANDOVER](docs/HANDOVER.md): current state and next task.
-- [demo-scope](docs/demo-scope.md): existing prototype implementation limits.
+- [WEB_PLAYTEST](docs/WEB_PLAYTEST.md): browser walkthrough and visual comparison.
+- [demo-scope](docs/demo-scope.md): prototype behavior and limits.

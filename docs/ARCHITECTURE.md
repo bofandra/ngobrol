@@ -3,8 +3,13 @@
 ## Stack decision
 Flutter mobile/web; Supabase Auth, PostgreSQL, Realtime, Edge Functions. Earlier design DOCX's React/Node suggestion is superseded. No extra server unless justified. Server-side AI provider undecided. All live infrastructure is unprovisioned at handover.
 
-## Current code
-lib/main.dart: UI, seeded Topic/Post/Link objects, local in-memory actions, CustomPainter causal map, simple local XP. lib/backend.dart: optional Supabase initialization, anonymous Auth, select/insert shared posts, manual refresh. supabase/demo_schema.sql: limited authenticated sandbox posts table with RLS. web/index.html and pubspec.yaml included. Tests authored but not run. No lockfile or native host scaffold verified.
+## Current web playtest
+
+`GameSession` owns the in-memory topics, contribution history, relationship votes, and pending proposals. Discover, the topic room, the forms, and the map read from that session. The map painter renders the seeded graph, and standard Flutter buttons provide a keyboard-accessible relationship list.
+
+`DiscussionBackend` is the optional shared-post interface. `DemoBackend` signs in anonymously and reads or inserts posts on the three seeded topics. Acknowledged rows appear immediately and refreshes reconcile by row ID. The newest refresh for a topic wins. Failed writes stay local for the session, with no automatic write retry. The schema has no client-supplied idempotency key, so a lost response after a server commit can surface both the shared post and the local copy. See [demo scope](demo-scope.md) for the sandbox boundary.
+
+The web release bundles its app assets and Flutter CanvasKit resources. Branch CI verifies dependency resolution, analysis, tests, and a release build, then uploads the static files for review.
 
 ## Target boundaries
 Flutter feature modules (discover, topic, talk, map, proposals/review, evidence, rewards, profile/moderation) → repository interfaces (local demo / Supabase) → Supabase Auth + PostgreSQL/RLS. Realtime authorized event stream; Edge Functions for orchestration, rate limits, AI provider calls and queue. Database transactions/RPC for authoritative version and XP operations. Treat model output and player posts as untrusted. Avoid exposing privileged functions or keys.

@@ -1,14 +1,14 @@
 # Roadmap — vertical slice first
 
-## Milestone A — verified offline Flutter Web playtest (next)
+## Milestone A — verified offline Flutter Web playtest
 - Resolve dependencies, generate only missing host scaffolding, lock dependencies.
 - Run flutter analyze, flutter test, flutter build web; fix real failures.
 - Manual browser walkthrough for all P0 actions and mobile layout. Add missing tests for create topic, vote withdraw, proposals, search and errors.
 - Align Discover, Create, Talk and Map UI with PNG references; capture screenshots.
-- Keep no-key offline demo; no live claims. Gate: build/tests pass, clear known limitations, owner reviews screenshots.
+- The offline release is verified locally and ready for owner review. See the [web playtest guide](WEB_PLAYTEST.md).
 
-## Milestone B — shareable web preview
-- Reproducible CI, web deployment plan (GitHub Pages or other approved host), correct base href/routing.
+## Milestone B — hosted web preview
+- Use the draft PR build artifact to evaluate GitHub Pages or another approved host. Verify the deployed base href and routing.
 - Obtain owner approval before public deployment; publish offline demo without collecting personal data. Gate: working URL, mobile browser smoke, visible demo limitations.
 
 ## Milestone C — durable Supabase vertical slice
