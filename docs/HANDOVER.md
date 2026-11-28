@@ -37,3 +37,10 @@ Commands and actual results:
 Known issues and limitations:
 Decisions changed:
 Next smallest actionable task:
+
+## 2026-11-28 baseline verification
+
+- Reviewed draft PR #1, the original Drive product document, and the checked-in mockups. The written design uses Flutter and Supabase and depicts the shell example as a causal hypothesis map.
+- Flutter 3.35.2 with Dart 3.9.0 resolved the pinned Supabase Flutter dependency. The original branch failed analysis, test compilation, and the release build at the same missing closing parenthesis in the proposal dialog. Applying the syntax correction let the no-CDN web build succeed and boot in Chrome.
+- Captured Discover, Create Topic, Talk, and Map at 360 × 800 and 1280 × 900 before restyling. The baseline used emoji topic rows, a modal create form, generic post cards, and an ungridded graph with a scrolling relationship list.
+- An isolated PostgreSQL 14 run with stub Auth claims verified author-owned inserts, reads by a second authenticated identity, and denial of unauthenticated reads and forged author IDs. Supabase Auth and API testing still require a dedicated sandbox.

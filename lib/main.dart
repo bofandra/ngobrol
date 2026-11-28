@@ -206,7 +206,7 @@ class _GameHomeState extends State<GameHome> {
           SwitchListTile(title: Text(positive ? 'Positive (+)' : 'Negative (−)'), value: positive,
             onChanged: (v) => change(() => positive = v)),
           TextField(controller: why, maxLength: 500, maxLines: 2, decoration: const InputDecoration(labelText: 'Reason or evidence')),
-        ]),
+        ])),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(onPressed: () {
